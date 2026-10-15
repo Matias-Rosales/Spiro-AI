@@ -1,4 +1,4 @@
-# VoiceLung: COPD likelihood from voice
+# Spiro AI: COPD likelihood from voice
 
 Research prototype that estimates the probability of COPD-like voice patterns from two short
 recordings (a sustained vowel and counting 1 to 20), with an English web front end.

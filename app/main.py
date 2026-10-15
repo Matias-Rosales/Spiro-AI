@@ -1,4 +1,4 @@
-"""VoiceLung web app: estimate COPD probability from two short voice recordings."""
+"""Spiro AI web app: estimate COPD probability from two short voice recordings."""
 import json
 import sys
 import tempfile
@@ -17,7 +17,7 @@ from copd_voice.features import extract_file, participant_vector  # noqa: E402
 bundle = joblib.load(ROOT / "models" / "copd_voice_model.joblib")
 metrics = json.loads((ROOT / "models" / "metrics.json").read_text())
 
-app = FastAPI(title="VoiceLung")
+app = FastAPI(title="Spiro AI")
 app.mount("/static", StaticFiles(directory=ROOT / "app" / "static"), name="static")
 
 DISPLAY = {
