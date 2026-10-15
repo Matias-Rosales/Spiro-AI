@@ -1,0 +1,9 @@
+librosa==1.0.0
+soundfile
+numpy
+pandas
+scikit-learn==1.9.1
+joblib
+fastapi
+uvicorn
+python-multipart

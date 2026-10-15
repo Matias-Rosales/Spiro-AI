@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VoiceLung</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%2714%27 fill=%27%231f6feb%27/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="wrap">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 4v10M16 14c-2 0-3-2-6-2-3.5 0-6 6-6 11 0 3 1.5 5 4 5 4 0 8-3 8-8M16 14c2 0 3-2 6-2 3.5 0 6 6 6 11 0 3-1.5 5-4 5-4 0-8-3-8-8"/></svg>
+    <span>VoiceLung</span>
+  </div>
+  <p class="tag">Research prototype</p>
+</header>
+
+<main class="wrap">
+  <section class="intro">
+    <h1>Estimate COPD likelihood from your voice</h1>
+    <p>Chronic obstructive pulmonary disease reduces airflow and breath support, which changes how long you can
+      sustain a sound, how often you pause, and how stable your voice is. Record two short tasks and a machine-learning
+      model trained on crowdsourced recordings estimates the probability of COPD-like voice patterns.</p>
+    <div class="notice" role="note">
+      <strong>Not a medical device.</strong> This is an experimental screening demo trained on a small, self-reported
+      dataset. It cannot diagnose or rule out COPD. Spirometry is the clinical standard; talk to a doctor about any
+      breathing symptoms.
+    </div>
+  </section>
+
+  <section class="tasks">
+    <article class="task" data-task="vowel">
+      <div class="step">1</div>
+      <h2>Sustained vowel</h2>
+      <p>Take a deep breath and hold the vowel <em>“a”</em> as in <em>“made”</em> (<em>aaaay…</em>) at a comfortable
+        pitch and loudness, for as long as you can.</p>
+      <div class="recorder">
+        <button class="rec" type="button"><span class="dot"></span><span class="lbl">Record</span></button>
+        <span class="timer">0.0 s</span>
+        <canvas class="meter" width="240" height="32"></canvas>
+      </div>
+      <audio controls hidden></audio>
+      <label class="upload">or upload a file <input type="file" accept="audio/*"></label>
+      <p class="status"></p>
+    </article>
+
+    <article class="task" data-task="counting">
+      <div class="step">2</div>
+      <h2>Counting</h2>
+      <p>Count from <em>one</em> to <em>twenty</em> in English at your normal pace and volume, breathing whenever you
+        need to.</p>
+      <div class="recorder">
+        <button class="rec" type="button"><span class="dot"></span><span class="lbl">Record</span></button>
+        <span class="timer">0.0 s</span>
+        <canvas class="meter" width="240" height="32"></canvas>
+      </div>
+      <audio controls hidden></audio>
+      <label class="upload">or upload a file <input type="file" accept="audio/*"></label>
+      <p class="status"></p>
+    </article>
+  </section>
+
+  <p class="tips">Tips: use a quiet room, hold the phone or microphone about 20 cm from your mouth, and avoid
+    background music or fans.</p>
+
+  <div class="actions">
+    <button id="analyze" class="primary" type="button" disabled>Analyze my voice</button>
+  </div>
+
+  <section id="result" class="result" hidden aria-live="polite">
+    <div class="gauge-card">
+      <svg viewBox="0 0 200 120" class="gauge" role="img" aria-label="Probability gauge">
+        <path class="track" d="M20 100 A80 80 0 0 1 180 100"/>
+        <path class="fill" d="M20 100 A80 80 0 0 1 180 100"/>
+      </svg>
+      <div class="prob"><span id="prob">–</span><small>estimated probability</small></div>
+      <p id="band" class="band"></p>
+      <p id="band-text" class="muted"></p>
+    </div>
+    <div class="measures-card">
+      <h3>Your voice measurements</h3>
+      <table id="measures">
+        <thead><tr><th>Measure</th><th>You</th><th>Typical healthy range</th><th>Typical COPD</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="muted small">Ranges are the interquartile range (healthy) and median (COPD) of the training cohort.
+        Single measures vary a lot between people; the model combines more than 100 features.</p>
+    </div>
+  </section>
+
+  <section class="model">
+    <h2>About the model</h2>
+    <div class="model-grid">
+      <div>
+        <h3>Data</h3>
+        <p>Trained on voice recordings from the <a href="https://github.com/iiscleap/Coswara-Data" target="_blank" rel="noopener">Coswara</a>
+          dataset (Indian Institute of Science), also mirrored on Kaggle. Cases are participants who reported a
+          <em>chronic lung disease</em>; controls reported no respiratory condition or symptom and were matched to each
+          case on sex, age (±10 years) and recording year.</p>
+        <p id="cohort" class="muted"></p>
+        <h3>Features &amp; model</h3>
+        <p>Phonation time, pause ratio, pitch statistics, jitter, shimmer, harmonics-to-noise ratio, MFCCs and spectral
+          shape from both recordings, fed to the best of four classifiers chosen by repeated 5-fold cross-validation,
+          then probability-calibrated.</p>
+      </div>
+      <div>
+        <h3>Cross-validated performance</h3>
+        <svg id="roc" viewBox="0 0 220 220" role="img" aria-label="ROC curve"></svg>
+        <table id="perf"><tbody></tbody></table>
+        <p class="muted small">Matched-pair concordance is how often a case scored above its own sex-, age- and
+          year-matched controls, the fairest single number here. Baselines show how much the demographics alone
+          and the recording year alone would predict.</p>
+      </div>
+    </div>
+    <h3>Limitations</h3>
+    <ul class="limits">
+      <li>Small cohort; the diagnosis is self-reported “chronic lung disease”, which includes conditions other than COPD.</li>
+      <li>Recorded on participants’ own phones and browsers in India in 2020–2022; accuracy on other languages, accents and microphones is unknown.</li>
+      <li>The probability is relative to the training mix of cases and controls, not to COPD prevalence in the general population.</li>
+    </ul>
+  </section>
+</main>
+
+<footer class="wrap muted small">VoiceLung · research prototype · recordings are processed in memory and not stored.</footer>
+<script src="/static/app.js"></script>
+</body>
+</html>
