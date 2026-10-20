@@ -162,8 +162,9 @@ def main():
             report["models"][key] = r
             print(f"[robust] {key:24s} AUC {r['auc']:.3f}  swapped {r['auc_background_swapped']:.3f}  "
                   f"shift {r['mean_abs_shift']:.3f}  flips {r['decision_flip_rate']:.1%}")
-            # Selection favours robustness: the worse of normal and swapped AUC.
-            score = min(r["auc"], r["auc_background_swapped"])
+            # Selection favours robustness: the worse of normal and swapped AUC, minus how much
+            # the predicted probability moves when only the background changes.
+            score = min(r["auc"], r["auc_background_swapped"]) - r["mean_abs_shift"]
             if use_aug and score > best_score:
                 best, best_score = (name, key), score
 
@@ -187,7 +188,7 @@ def main():
     args.out.mkdir(parents=True, exist_ok=True)
     joblib.dump({"model": final, "columns": robust_cols,  # "r__" + extract_cough() keys
                  "train_prevalence": float(table[table.kind == "orig"].label.mean())},
-                args.out / "copd_cough_model.joblib")
+                args.out / "copd_cough_model.joblib", compress=("xz", 6))  # keeps the file under GitHub's 50 MB warning
     (args.out / "metrics_cough.json").write_text(json.dumps(report, indent=2))
     print(f"saved {key} -> {args.out}")
 

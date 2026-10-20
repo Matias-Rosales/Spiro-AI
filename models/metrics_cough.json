@@ -1,0 +1,82 @@
+{
+  "n_recordings": 853,
+  "n_copd": 221,
+  "models": {
+    "logistic_regression": {
+      "auc": 0.7695839777001355,
+      "auc_sd": 0.005549227854908704,
+      "auc_background_swapped": 0.7281559654046624,
+      "mean_abs_shift": 0.11553609521617765,
+      "decision_flip_rate": 0.15826494724501758,
+      "balanced_accuracy": 0.7035125150352254,
+      "sensitivity": 0.669683257918552,
+      "specificity": 0.7373417721518988
+    },
+    "logistic_regression+aug": {
+      "auc": 0.7628085801019532,
+      "auc_sd": 0.003894290920656841,
+      "auc_background_swapped": 0.737370410676442,
+      "mean_abs_shift": 0.11074385659076172,
+      "decision_flip_rate": 0.15357561547479484,
+      "balanced_accuracy": 0.6977525917864712,
+      "sensitivity": 0.6787330316742082,
+      "specificity": 0.7167721518987342
+    },
+    "random_forest": {
+      "auc": 0.7819415010405332,
+      "auc_sd": 0.007580694473165904,
+      "auc_background_swapped": 0.7317787387593789,
+      "mean_abs_shift": 0.049491015990367704,
+      "decision_flip_rate": 0.044548651817116064,
+      "balanced_accuracy": 0.5463872501288733,
+      "sensitivity": 0.1085972850678733,
+      "specificity": 0.9841772151898734
+    },
+    "random_forest+aug": {
+      "auc": 0.8052198484067433,
+      "auc_sd": 0.006083137477287211,
+      "auc_background_swapped": 0.7761827710636348,
+      "mean_abs_shift": 0.043892618720102985,
+      "decision_flip_rate": 0.026963657678780773,
+      "balanced_accuracy": 0.5405020333352425,
+      "sensitivity": 0.09049773755656108,
+      "specificity": 0.990506329113924
+    },
+    "gradient_boosting": {
+      "auc": 0.7645077992248505,
+      "auc_sd": 0.009989640384126924,
+      "auc_background_swapped": 0.7331462283063178,
+      "mean_abs_shift": 0.10929835039295747,
+      "decision_flip_rate": 0.1324736225087925,
+      "balanced_accuracy": 0.6585249727934017,
+      "sensitivity": 0.4072398190045249,
+      "specificity": 0.9098101265822784
+    },
+    "gradient_boosting+aug": {
+      "auc": 0.8011197663096397,
+      "auc_sd": 0.0012726835931167145,
+      "auc_background_swapped": 0.7976688241021823,
+      "mean_abs_shift": 0.08913684868274159,
+      "decision_flip_rate": 0.12778429073856976,
+      "balanced_accuracy": 0.6926978922045937,
+      "sensitivity": 0.497737556561086,
+      "specificity": 0.8876582278481012
+    }
+  },
+  "naive_baseline": {
+    "auc": 0.8655683792504344,
+    "auc_sd": 0.0010331446685431702,
+    "auc_background_swapped": 0.6218211237757031,
+    "mean_abs_shift": 0.1308945994054204,
+    "decision_flip_rate": 0.1395076201641266,
+    "balanced_accuracy": 0.65113981327682,
+    "sensitivity": 0.3212669683257919,
+    "specificity": 0.9810126582278481
+  },
+  "best_model": "random_forest+aug",
+  "official_split": {
+    "auc": 0.8542432195975502,
+    "auc_background_swapped": 0.8117235345581802,
+    "n_test": 172
+  }
+}
