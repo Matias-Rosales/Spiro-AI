@@ -18,14 +18,14 @@
 
 <main class="wrap">
   <section class="intro">
-    <h1>Estimate COPD likelihood from your voice</h1>
-    <p>Chronic obstructive pulmonary disease reduces airflow and breath support, which changes how long you can
-      sustain a sound, how often you pause, and how stable your voice is. Record two short tasks and a machine-learning
-      model trained on crowdsourced recordings estimates the probability of COPD-like voice patterns.</p>
+    <h1>Check your voice and cough for signs of lung disease</h1>
+    <p>Chronic lung diseases such as COPD reduce airflow and breath support. That changes how long you can sustain a
+      sound, how often you pause, how stable your voice is and how your cough sounds. Record the short tasks below and
+      two machine-learning models estimate how closely your recordings resemble those of people with lung disease.</p>
     <div class="notice" role="note">
-      <strong>Not a medical device.</strong> This is an experimental screening demo trained on a small, self-reported
-      dataset. It cannot diagnose or rule out COPD. Spirometry is the clinical standard; talk to a doctor about any
-      breathing symptoms.
+      <strong>Not a medical device.</strong> This is an experimental screening demo trained on small research
+      datasets. It cannot diagnose or rule out any disease. Spirometry is the clinical standard; talk to a doctor
+      about any breathing symptoms.
     </div>
   </section>
 
@@ -59,26 +59,55 @@
       <label class="upload">or upload a file <input type="file" accept="audio/*"></label>
       <p class="status"></p>
     </article>
+
+    <article class="task" data-task="cough">
+      <div class="step">3</div>
+      <h2>Cough <span class="optional">optional</span></h2>
+      <p>Cough on purpose <em>3 times</em>, with a short breath between coughs, about 20 cm from the microphone.</p>
+      <div class="recorder">
+        <button class="rec" type="button"><span class="dot"></span><span class="lbl">Record</span></button>
+        <span class="timer">0.0 s</span>
+        <canvas class="meter" width="240" height="32"></canvas>
+      </div>
+      <audio controls hidden></audio>
+      <label class="upload">or upload a file <input type="file" accept="audio/*"></label>
+      <p class="status"></p>
+    </article>
   </section>
 
-  <p class="tips">Tips: use a quiet room, hold the phone or microphone about 20 cm from your mouth, and avoid
-    background music or fans.</p>
+  <p class="tips">Record steps 1 and 2 for the voice result, step 3 for the cough result, or all three. Use a quiet
+    room, hold the phone or microphone about 20 cm from your mouth, and avoid background music or fans.</p>
 
   <div class="actions">
-    <button id="analyze" class="primary" type="button" disabled>Analyze my voice</button>
+    <button id="analyze" class="primary" type="button" disabled>Analyze my recordings</button>
   </div>
 
   <section id="result" class="result" hidden aria-live="polite">
-    <div class="gauge-card">
-      <svg viewBox="0 0 200 120" class="gauge" role="img" aria-label="Probability gauge">
-        <path class="track" d="M20 100 A80 80 0 0 1 180 100"/>
-        <path class="fill" d="M20 100 A80 80 0 0 1 180 100"/>
-      </svg>
-      <div class="prob"><span id="prob">–</span><small>estimated probability</small></div>
-      <p id="band" class="band"></p>
-      <p id="band-text" class="muted"></p>
+    <div class="gauges">
+      <div class="gauge-card" id="voice-result" hidden>
+        <p class="gauge-title">Voice</p>
+        <p class="gauge-sub">Chronic lung disease patterns</p>
+        <svg viewBox="0 0 200 120" class="gauge" role="img" aria-label="Voice probability gauge">
+          <path class="track" d="M20 100 A80 80 0 0 1 180 100"/>
+          <path class="fill" d="M20 100 A80 80 0 0 1 180 100"/>
+        </svg>
+        <div class="prob"><span class="pct">–</span><small>estimated probability</small></div>
+        <p class="band"></p>
+        <p class="band-text muted"></p>
+      </div>
+      <div class="gauge-card" id="cough-result" hidden>
+        <p class="gauge-title">Cough</p>
+        <p class="gauge-sub">COPD patterns</p>
+        <svg viewBox="0 0 200 120" class="gauge" role="img" aria-label="Cough probability gauge">
+          <path class="track" d="M20 100 A80 80 0 0 1 180 100"/>
+          <path class="fill" d="M20 100 A80 80 0 0 1 180 100"/>
+        </svg>
+        <div class="prob"><span class="pct">–</span><small>estimated probability</small></div>
+        <p class="band"></p>
+        <p class="band-text muted"></p>
+      </div>
     </div>
-    <div class="measures-card">
+    <div class="measures-card" id="voice-measures" hidden>
       <h3>Your voice measurements</h3>
       <table id="measures">
         <thead><tr><th>Measure</th><th>You</th><th>Typical healthy range</th><th>Typical COPD</th></tr></thead>
@@ -90,7 +119,7 @@
   </section>
 
   <section class="model">
-    <h2>About the model</h2>
+    <h2>About the voice model</h2>
     <div class="model-grid">
       <div>
         <h3>Data</h3>
@@ -117,7 +146,39 @@
     <ul class="limits">
       <li>Small cohort; the diagnosis is self-reported “chronic lung disease”, which includes conditions other than COPD.</li>
       <li>Recorded on participants’ own phones and browsers in India in 2020–2022; accuracy on other languages, accents and microphones is unknown.</li>
-      <li>The probability is relative to the training mix of cases and controls, not to COPD prevalence in the general population.</li>
+      <li>The probability is relative to the training mix of cases and controls, not to disease prevalence in the general population.</li>
+    </ul>
+  </section>
+
+  <section class="model" id="cough-model" hidden>
+    <h2>About the cough model</h2>
+    <div class="model-grid">
+      <div>
+        <h3>Data</h3>
+        <p>Trained on the <a href="https://zenodo.org/records/14881818" target="_blank" rel="noopener">COPD-Cough (CC)</a>
+          dataset (University of Science and Technology of China), with smartphone coughs from people with clinically
+          diagnosed COPD and healthy volunteers.</p>
+        <p id="cough-cohort" class="muted"></p>
+        <h3>Ignoring the background</h3>
+        <p>In this dataset the background noise alone predicts COPD, probably because patients and volunteers were
+          recorded in different places. To stop the model from learning the room instead of the cough, each recording
+          is band-limited to 100–4000 Hz, its own noise profile is subtracted, and only the detected coughs are
+          analysed. During training, every cough is also replayed over the background of other recordings, so the
+          background carries no information about the label.</p>
+      </div>
+      <div>
+        <h3>Cross-validated performance</h3>
+        <table id="cough-perf"><tbody></tbody></table>
+        <p class="muted small">“Background swapped” re-scores every test cough over the background of a recording
+          from the opposite group. A model that relies on the room changes its answer; a model that listens to the
+          cough does not.</p>
+      </div>
+    </div>
+    <h3>Limitations</h3>
+    <ul class="limits">
+      <li>One cohort from China with no age, sex or patient information, so age cannot be matched and the same
+        person may appear in several recordings.</li>
+      <li>Background removal reduces but cannot fully exclude differences in rooms and phones between the groups.</li>
     </ul>
   </section>
 </main>

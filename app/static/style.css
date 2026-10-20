@@ -86,9 +86,12 @@ audio { width: 100%; margin-top: 12px; }
 .actions { margin: 20px 0 8px; }
 .primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); padding: 12px 26px; font-weight: 600; }
 
-.result { display: grid; grid-template-columns: minmax(240px, 1fr) 2fr; gap: 16px; margin-top: 20px; }
-.result[hidden] { display: none; }
-@media (max-width: 720px) { .result { grid-template-columns: 1fr; } }
+.result { display: grid; gap: 16px; margin-top: 20px; }
+.result[hidden], .gauge-card[hidden], .measures-card[hidden], .model[hidden] { display: none; }
+.gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.gauge-title { margin: 0; font-weight: 700; font-size: 1.05rem; }
+.gauge-sub { margin: 0 0 8px; color: var(--muted); font-size: .85rem; }
+.optional { font-size: .72rem; font-weight: 600; color: var(--muted); border: 1px solid var(--border); border-radius: 99px; padding: 1px 8px; vertical-align: middle; margin-left: 4px; }
 .gauge-card, .measures-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
 .gauge-card { text-align: center; }
 .gauge { width: 100%; max-width: 240px; }

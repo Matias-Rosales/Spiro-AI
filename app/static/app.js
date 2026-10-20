@@ -1,9 +1,10 @@
-const recordings = { vowel: null, counting: null };
+const recordings = { vowel: null, counting: null, cough: null };
 const analyzeBtn = document.getElementById("analyze");
 let active = null; // the recorder currently running
 
 function updateAnalyze() {
-  analyzeBtn.disabled = !(recordings.vowel && recordings.counting) || active !== null;
+  const ready = (recordings.vowel && recordings.counting) || recordings.cough;
+  analyzeBtn.disabled = !ready || active !== null;
 }
 
 function setRecording(card, blob, name) {
@@ -117,35 +118,55 @@ document.querySelectorAll(".task").forEach((card) => {
   });
 });
 
-function renderResult(r) {
-  const pct = Math.round(r.probability * 100);
-  document.getElementById("prob").textContent = `${pct}%`;
-  const fill = document.querySelector(".gauge .fill");
-  const len = fill.getTotalLength();
-  fill.style.strokeDasharray = len;
-  fill.style.strokeDashoffset = len * (1 - r.probability);
-  const colors = { low: "--low", moderate: "--mid", elevated: "--high" };
-  const color = `var(${colors[r.band]})`;
-  fill.style.stroke = color;
-  const band = document.getElementById("band");
-  band.textContent = { low: "Low likelihood", moderate: "Moderate likelihood", elevated: "Elevated likelihood" }[r.band];
-  band.style.color = color;
-  document.getElementById("band-text").textContent = {
+const BAND_LABEL = { low: "Low likelihood", moderate: "Moderate likelihood", elevated: "Elevated likelihood" };
+const BAND_COLOR = { low: "--low", moderate: "--mid", elevated: "--high" };
+const BAND_TEXT = {
+  voice: {
     low: "Your voice resembles the healthy recordings in our data.",
     moderate: "Some voice features resemble recordings from people with chronic lung disease.",
-    elevated: "Your voice shares several patterns with recordings from people with chronic lung disease. Consider asking a doctor about a spirometry test, especially if you have cough, breathlessness or a smoking history.",
-  }[r.band];
+    elevated: "Your voice shares several patterns with recordings from people with chronic lung disease.",
+  },
+  cough: {
+    low: "Your cough resembles the healthy coughs in our data.",
+    moderate: "Some cough features resemble coughs from people with COPD.",
+    elevated: "Your cough shares several patterns with coughs from people with COPD.",
+  },
+};
+const ADVICE = " Consider asking a doctor about a spirometry test, especially if you have breathlessness, a lasting cough or a smoking history.";
 
-  const tbody = document.querySelector("#measures tbody");
-  tbody.innerHTML = "";
-  for (const m of r.measures) {
-    const tr = document.createElement("tr");
-    const fmt = (v) => (v === null ? "–" : `${v} ${m.unit}`);
-    tr.innerHTML = `<td>${m.label}<small>${m.help}</small></td>
-      <td class="num">${fmt(m.value)}</td>
-      <td class="num">${m.healthy_iqr[0]} – ${m.healthy_iqr[1]} ${m.unit}</td>
-      <td class="num">${fmt(m.copd_median)}</td>`;
-    tbody.appendChild(tr);
+function renderGauge(card, kind, r) {
+  card.hidden = !r;
+  if (!r) return;
+  card.querySelector(".pct").textContent = `${Math.round(r.probability * 100)}%`;
+  const fill = card.querySelector(".gauge .fill");
+  const len = fill.getTotalLength();
+  const color = `var(${BAND_COLOR[r.band]})`;
+  fill.style.strokeDasharray = len;
+  fill.style.strokeDashoffset = len * (1 - r.probability);
+  fill.style.stroke = color;
+  const band = card.querySelector(".band");
+  band.textContent = BAND_LABEL[r.band];
+  band.style.color = color;
+  card.querySelector(".band-text").textContent = BAND_TEXT[kind][r.band] + (r.band === "elevated" ? ADVICE : "");
+}
+
+function renderResult(r) {
+  renderGauge(document.getElementById("voice-result"), "voice", r.voice);
+  renderGauge(document.getElementById("cough-result"), "cough", r.cough);
+  const measures = document.getElementById("voice-measures");
+  measures.hidden = !r.voice;
+  if (r.voice) {
+    const tbody = document.querySelector("#measures tbody");
+    tbody.innerHTML = "";
+    for (const m of r.voice.measures) {
+      const tr = document.createElement("tr");
+      const fmt = (v) => (v === null ? "–" : `${v} ${m.unit}`);
+      tr.innerHTML = `<td>${m.label}<small>${m.help}</small></td>
+        <td class="num">${fmt(m.value)}</td>
+        <td class="num">${m.healthy_iqr[0]} – ${m.healthy_iqr[1]} ${m.unit}</td>
+        <td class="num">${fmt(m.copd_median)}</td>`;
+      tbody.appendChild(tr);
+    }
   }
   const section = document.getElementById("result");
   section.hidden = false;
@@ -154,8 +175,10 @@ function renderResult(r) {
 
 analyzeBtn.addEventListener("click", async () => {
   const fd = new FormData();
-  fd.append("vowel", recordings.vowel.blob, recordings.vowel.name);
-  fd.append("counting", recordings.counting.blob, recordings.counting.name);
+  for (const task of ["vowel", "counting", "cough"]) {
+    if (task !== "cough" && !(recordings.vowel && recordings.counting)) continue;
+    if (recordings[task]) fd.append(task, recordings[task].blob, recordings[task].name);
+  }
   analyzeBtn.disabled = true;
   analyzeBtn.textContent = "Analyzing…";
   try {
@@ -166,10 +189,28 @@ analyzeBtn.addEventListener("click", async () => {
   } catch (e) {
     alert(`Could not analyze the recordings: ${e.message}`);
   } finally {
-    analyzeBtn.textContent = "Analyze my voice";
+    analyzeBtn.textContent = "Analyze my recordings";
     updateAnalyze();
   }
 });
+
+function renderCoughInfo(c) {
+  if (!c) return;
+  document.getElementById("cough-model").hidden = false;
+  document.getElementById("cough-cohort").textContent =
+    `Dataset: ${c.n_recordings} cough recordings (${c.n_copd} COPD, ${c.n_recordings - c.n_copd} healthy).`;
+  const cv = c.cv, nb = c.naive_baseline;
+  const rows = [
+    ["ROC AUC", cv.auc.toFixed(2), nb.auc.toFixed(2)],
+    ["ROC AUC, background swapped", cv.auc_background_swapped.toFixed(2), nb.auc_background_swapped.toFixed(2)],
+    ["Decisions flipped by background", `${(cv.decision_flip_rate * 100).toFixed(0)}%`, `${(nb.decision_flip_rate * 100).toFixed(0)}%`],
+    ["Sensitivity", cv.sensitivity.toFixed(2), nb.sensitivity.toFixed(2)],
+    ["Specificity", cv.specificity.toFixed(2), nb.specificity.toFixed(2)],
+  ];
+  document.querySelector("#cough-perf tbody").innerHTML =
+    `<tr><th></th><th>This model</th><th>Naive model</th></tr>` +
+    rows.map(([k, a, b]) => `<tr><td>${k}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join("");
+}
 
 function renderModelInfo(info) {
   document.getElementById("cohort").textContent =
@@ -195,6 +236,7 @@ function renderModelInfo(info) {
     ["Recording year only (baseline AUC)", info.baselines.recording_year_only.auc_mean.toFixed(2)],
   ];
   document.querySelector("#perf tbody").innerHTML = rows.map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join("");
+  renderCoughInfo(info.cough);
 }
 
 fetch("/api/model-info").then((r) => r.json()).then(renderModelInfo).catch(() => {});

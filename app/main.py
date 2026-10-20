@@ -1,4 +1,4 @@
-"""Spiro AI web app: estimate COPD probability from two short voice recordings."""
+"""Spiro AI web app: lung disease likelihood from voice recordings and a cough."""
 import json
 import sys
 import tempfile
@@ -12,10 +12,14 @@ from fastapi.staticfiles import StaticFiles
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from copd_voice.cough import extract_cough_file  # noqa: E402
 from copd_voice.features import extract_file, participant_vector  # noqa: E402
 
 bundle = joblib.load(ROOT / "models" / "copd_voice_model.joblib")
 metrics = json.loads((ROOT / "models" / "metrics.json").read_text())
+COUGH_MODEL = ROOT / "models" / "copd_cough_model.joblib"
+cough_bundle = joblib.load(COUGH_MODEL) if COUGH_MODEL.exists() else None
+cough_metrics = json.loads((ROOT / "models" / "metrics_cough.json").read_text()) if cough_bundle else None
 
 app = FastAPI(title="Spiro AI")
 app.mount("/static", StaticFiles(directory=ROOT / "app" / "static"), name="static")
@@ -50,10 +54,18 @@ def model_info():
         "roc": metrics["best_model_roc"],
         "per_task": metrics["per_task"],
         "matched_pair_concordance": metrics["matched_pair_concordance"],
+        "cough": None if cough_metrics is None else {
+            "best_model": cough_metrics["best_model"],
+            "cv": cough_metrics["models"][cough_metrics["best_model"]],
+            "naive_baseline": cough_metrics["naive_baseline"],
+            "official_split": cough_metrics["official_split"],
+            "n_recordings": cough_metrics["n_recordings"],
+            "n_copd": cough_metrics["n_copd"],
+        },
     }
 
 
-async def _features(upload: UploadFile) -> dict:
+async def _features(upload: UploadFile, extractor=extract_file) -> dict:
     data = await upload.read()
     if not data:
         raise HTTPException(400, f"{upload.filename or 'recording'} is empty")
@@ -64,15 +76,37 @@ async def _features(upload: UploadFile) -> dict:
         tmp.write(data)
         tmp.flush()
         try:
-            return extract_file(tmp.name)
+            return extractor(tmp.name)
         except ValueError as e:
             raise HTTPException(422, str(e))
         except Exception:
             raise HTTPException(422, "Could not decode the audio. Try WAV, MP3, M4A, OGG or WebM.")
 
 
+def _band(prob: float) -> str:
+    return "low" if prob < 0.3 else "moderate" if prob < 0.6 else "elevated"
+
+
 @app.post("/api/predict")
-async def predict(vowel: UploadFile = File(...), counting: UploadFile = File(...)):
+async def predict(vowel: UploadFile | None = File(None), counting: UploadFile | None = File(None),
+                  cough: UploadFile | None = File(None)):
+    has_voice = vowel is not None and counting is not None
+    if not has_voice and cough is None:
+        raise HTTPException(400, "Record both voice tasks (steps 1 and 2), the cough (step 3), or all three.")
+    if cough is not None and cough_bundle is None:
+        raise HTTPException(503, "The cough model is not available on this server.")
+    result = {"voice": None, "cough": None}
+    if cough is not None:
+        feats = await _features(cough, extract_cough_file)
+        X = pd.DataFrame([{f"r__{k}": v for k, v in feats.items()}]).reindex(columns=cough_bundle["columns"])
+        p = float(cough_bundle["model"].predict_proba(X)[0, 1])
+        result["cough"] = {"probability": p, "band": _band(p), "n_coughs": int(feats["n_coughs"])}
+    if has_voice:
+        result["voice"] = await _voice(vowel, counting)
+    return result
+
+
+async def _voice(vowel: UploadFile, counting: UploadFile) -> dict:
     row = participant_vector({"vowel-a": await _features(vowel), "counting-normal": await _features(counting)})
     X = pd.DataFrame([row]).reindex(columns=bundle["columns"])
     prob = float(bundle["model"].predict_proba(X)[0, 1])
@@ -88,6 +122,5 @@ async def predict(vowel: UploadFile = File(...), counting: UploadFile = File(...
             "healthy_iqr": [round(v * scale, 2) for v in (ref["0"][0], ref["0"][2])],
             "copd_median": round(ref["1"][1] * scale, 2),
         })
-    band = "low" if prob < 0.3 else "moderate" if prob < 0.6 else "elevated"
-    return {"probability": prob, "band": band, "measures": measures,
+    return {"probability": prob, "band": _band(prob), "measures": measures,
             "train_prevalence": bundle["train_prevalence"]}
